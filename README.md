@@ -14,6 +14,12 @@
 > 
 > **Recommended setup:** Self-host on a spare PC / laptop / Raspberry Pi, or use a cheap unmanaged Linux VPS (e.g., Hetzner, DigitalOcean, Oracle Cloud Free Tier) using Docker or Cloudflare Tunnels (`cloudflared`).
 
+> 🛡️ **OFFICIAL NOTICE ON THIRD-PARTY FORKS & PAID SERVICES:**
+> - **100% Free & Open-Source:** This project is, and will always remain, completely free and open-source under the MIT license. **There are NO paid subscriptions, NO device limits, and NO license keys.**
+> - **Unauthorized Monetization:** If any third-party fork, website, or instance claims to be this addon while selling "premium access", "license keys", or monthly subscriptions (e.g., via PayPal or crypto), **they are NOT affiliated with, supported by, or endorsed by this project**.
+> - **Content Scope:** This addon exclusively indexes public live sports fixtures. The official repository does not distribute or endorse adult content, shock media, or paid pirated IPTV bundles.
+> - **Official Support:** The only official repository is [github.com/rajhodedara/live-sport-plugin](https://github.com/rajhodedara/live-sport-plugin). Voluntary community support is solely via [Ko-fi](https://ko-fi.com/rajodedara).
+
 > ☕ **Enjoying Nuvio Live Sports?** Consider [supporting the project on Ko-fi](https://ko-fi.com/rajodedara) to help cover maintenance, dedicated scrapers, and infrastructure!
 
 A production-grade live sports streaming add-on for [Nuvio](https://nuvio.tv) and [Stremio](https://www.stremio.com/). It serves as a powerful multi-source aggregator that provides native live sports streams (Football, Basketball, Motorsport, Cricket, and more) inside your client, utilizing an advanced internal stream resolver to bypass CORS restrictions.
@@ -193,4 +199,14 @@ npm run check-sources
 # Validate 24/7 channel and live TV endpoints
 npm run test:247
 ```
+
+---
+
+## 📄 License & Disclaimer
+
+This project is licensed under the [MIT License](LICENSE).
+
+- **Personal & Educational Use:** This software is an experimental media aggregator and protocol scraper developed solely for personal, non-commercial, and educational purposes.
+- **No Hosting of Media:** This addon does not host, broadcast, or store any video content or media streams on its own servers. It merely parses publicly reachable web manifests.
+- **Third-Party Integrity:** The authors assume no liability for unofficial third-party forks, paid reseller bundles, or modified distributions operating under independent domains.
 
