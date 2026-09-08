@@ -1,6 +1,10 @@
 // Hardcoded CF proxy pool — add more URLs to multiply free-tier limits
 const CF_PROXY_POOL = [];
 
+// Safe impit wrapper — falls back to undici when impit native binary is
+// unavailable (ARM64 VPS, Alpine/musl Linux, certain Windows Server builds).
+const { safeFetch: _safeFetch } = require('../impitClient');
+
 // Pick a random proxy from the pool
 function getCfProxyUrl() {
   if (process.env.NODE_ENV === 'test') return null;
@@ -81,58 +85,19 @@ class BaseProvider {
       url = proxyUrl.toString();
     }
     
-    const { request, Agent } = require('undici');
-    const defaultDispatcher = new Agent({
-      connect: {
-        rejectUnauthorized: false
-      }
-    });
-    
-    try {
-      const reqOptions = {
-        method: options.method || 'GET',
-        headers: options.headers || {},
-        headersTimeout: 15000,
-        bodyTimeout: 15000,
-        dispatcher: defaultDispatcher
-        // NOTE: undici v8 rejects `maxRedirections` on request() ("use the redirect
-        // interceptor"). Passing it made this branch throw on EVERY call, silently
-        // routing all fetches through the Impit fallback. Redirects are followed
-        // by the Impit fallback when the undici path fails.
-      };
-      
-      if (options.body) reqOptions.body = options.body;
-      
-      const res = await request(url, reqOptions);
-      const textData = await res.body.text();
-      
-      return {
-        ok: res.statusCode >= 200 && res.statusCode < 300,
-        status: res.statusCode,
-        text: async () => textData,
-        json: async () => JSON.parse(textData)
-      };
-    } catch (err) {
-      try {
-        const { Impit } = require('impit');
-        const impitClient = new Impit();
-        const res = await impitClient.fetch(url, {
-          method: options.method || 'GET',
-          headers: options.headers || {},
-          body: options.body
-        });
-        const textData = await res.text();
-        return {
-          ok: res.status >= 200 && res.status < 300,
-          status: res.status,
-          text: async () => textData,
-          json: async () => JSON.parse(textData)
-        };
-      } catch (impitErr) {
-        console.error(`[BaseProvider] Fetch error: ${err.message}`);
-        throw err;
-      }
-    }
+    // safeFetch tries impit first (browser TLS fingerprint), falls back to
+    // undici automatically — works on Windows, Linux x64, ARM64, musl, etc.
+
+    const reqOptions = {
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      body: options.body,
+      timeoutMs: 15000,
+    };
+
+    // safeFetch tries impit first (browser TLS fingerprint), falls back to
+    // undici automatically — works on Windows, Linux x64, ARM64, musl, etc.
+    return await _safeFetch(url, reqOptions);
   }
 
   /**

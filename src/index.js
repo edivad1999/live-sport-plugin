@@ -143,33 +143,23 @@ app.get('/img', async (req, res) => {
   res.send(svg);
 });
 
-// ─── Manifest proxy: shared client + validated short-TTL cache ──────────────
-// Live HLS players reload /api/manifest every 2-6 s per viewer. A shared Impit
-// client (keep-alive) + a validated short-TTL cache removes the per-viewer TLS
-// handshake and repeated upstream fetches. Key = url|referer|origin (token
-// binding depends on all three). Only bodies that passed the #EXT validation
-// are cached. No HTTP Cache-Control is set - players must never cache live
-// manifests client-side.
+// ─── Shared safe HTTP client (impit + undici fallback) ───────────────────────
+// Works on Windows, Linux x64/ARM64, Alpine/musl. If impit native binary is
+// absent, all fetches silently use undici — streams continue to work.
+const { safeFetch: _safeFetch } = require('./impitClient');
+
+// ─── Manifest proxy: short-TTL cache + request coalescing ───────────────────
+// Live HLS players reload /api/manifest every 2-6 s per viewer. A validated
+// short-TTL cache removes per-viewer TLS handshakes and repeated upstream
+// fetches. Key = url|referer|origin. Only bodies containing #EXT are cached.
 const MANIFEST_TTL_MS = 3000;
 const MANIFEST_CACHE_MAX = 100;
 const MANIFEST_NEGATIVE_TTL_MS = 15 * 1000;
 const manifestCache = new Map();      // key -> { body, expiresAt, lastAccess }
 const manifestInFlight = new Map();   // key -> Promise (coalesced upstream fetch)
 
-let sharedImpitClient;                // lazy singleton; undefined = not tried yet
-function getSharedImpitClient() {
-  if (sharedImpitClient === undefined) {
-    try {
-      const { Impit } = require('impit');
-      sharedImpitClient = new Impit();
-    } catch (_) {
-      sharedImpitClient = null;
-    }
-  }
-  return sharedImpitClient;
-}
-
 // Returns the stored cache ENTRY (positive or negative), or null when
+
 // missing/expired (expired entries are deleted as before).
 function manifestCacheGet(key) {
   const e = manifestCache.get(key);
@@ -213,31 +203,11 @@ async function fetchUpstreamManifest(targetUrl, referer, origin) {
     'Origin': origin,
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
   };
-  try {
-    const client = getSharedImpitClient();
-    if (!client) throw new Error('impit unavailable');
-    // Impit has no deadline here - race a hard 10 s timeout so a hung upstream
-    // can never hold the viewer's poll (and its coalesced waiters).
-    return await Promise.race([
-      (async () => {
-        const fetchRes = await client.fetch(targetUrl, { headers });
-        if (!fetchRes.ok) throw new Error(`HTTP ${fetchRes.status}`);
-        return await fetchRes.text();
-      })(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('impit timeout 10000ms')), 10000))
-    ]);
-  } catch (e) {
-    // Fallback to undici (redirects followed)
-    const { request } = require('undici');
-    const fetchRes = await request(targetUrl, {
-      headers,
-      headersTimeout: 10000,
-      bodyTimeout: 10000
-      // NOTE: undici v8 rejects `maxRedirections` on request(); it must not be
-      // passed here or the fallback path itself throws (see BaseProvider.proxyFetch).
-    });
-    return await fetchRes.body.text();
-  }
+  // _safeFetch: impit (browser TLS fingerprint) with automatic undici fallback.
+  // A hard 10 s timeout ensures a hung upstream can never hold the viewer's poll.
+  const result = await _safeFetch(targetUrl, { headers, timeoutMs: 10000 });
+  if (!result.ok) throw new Error(`HTTP ${result.status}`);
+  return await result.text();
 }
 
 app.get('/api/manifest', async (req, res) => {

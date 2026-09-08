@@ -111,21 +111,10 @@ async function resolveSource(src, match, config) {
   return resStreams;
 }
 
-// Shared Impit client for stream health verification. Created lazily, at most
-// once per process; caches null on failure so verification falls back to undici.
-let sharedVerifyImpit;                // lazy singleton; undefined = not tried yet
-function getVerifyImpitClient() {
-  if (sharedVerifyImpit === undefined) {
-    try {
-      const { Impit } = require('impit');
-      sharedVerifyImpit = new Impit();
-    } catch (e) {
-      console.warn('[streams.js] Impit unavailable, verification will use undici:', e.message);
-      sharedVerifyImpit = null;
-    }
-  }
-  return sharedVerifyImpit;
-}
+// Safe impit+undici helper — works on all platforms (Windows, Linux x64/ARM64, musl).
+// impit is tried first for browser TLS fingerprinting; undici is the automatic fallback.
+const { safeFetch: _safeFetch } = require('./impitClient');
+
 
 // --- Stream Health Verification ---
 // Pings each direct stream once and drops dead ones (404/403/5xx, or 200 bodies
@@ -133,7 +122,6 @@ function getVerifyImpitClient() {
 // untouched. Runs once per mint (see mintVerifiedSources), not per request, so
 // cached results are served without re-verification.
 async function verifyStreams(streams, cacheKey, m3u8Parser, resolveCache) {
-  const impitClient = getVerifyImpitClient();
 
   const checkedStreams = await Promise.all(streams.map(async (s) => {
     // We only pre-flight check direct streams (m3u8 urls). Web player links are kept blindly.
@@ -179,32 +167,20 @@ async function verifyStreams(streams, cacheKey, m3u8Parser, resolveCache) {
       if (origin) reqHeaders['Origin'] = origin;
 
       try {
-        if (!impitClient) throw new Error('impit unavailable');
-        res = await impitClient.fetch(targetUrl, {
+        // _safeFetch handles impit -> undici fallback automatically on all platforms
+        const result = await _safeFetch(targetUrl, {
           method: 'GET',
           headers: reqHeaders,
-          signal: abortController.signal
+          signal: abortController.signal,
+          timeoutMs: 5000,
         });
-        bodySample = await res.text();
-      } catch (impitErr) {
-        // Fallback to undici
-        try {
-          const { request } = require('undici');
-          const uRes = await request(targetUrl, {
-            method: 'GET',
-            headers: reqHeaders,
-            headersTimeout: 3000,
-            bodyTimeout: 3000,
-            signal: abortController.signal
-          });
-          res = { status: uRes.statusCode };
-          bodySample = await uRes.body.text();
-        } catch (undiciErr) {
-          clearTimeout(timeout);
-          console.log(`[Filter] Dropped timeout/error stream: ${targetUrl} - ${impitErr.message}`);
-          if (cacheKey) resolveCache.noteFailure(cacheKey);
-          return null;
-        }
+        res = { status: result.status };
+        bodySample = await result.text();
+      } catch (fetchErr) {
+        clearTimeout(timeout);
+        console.log(`[Filter] Dropped timeout/error stream: ${targetUrl} - ${fetchErr.message}`);
+        if (cacheKey) resolveCache.noteFailure(cacheKey);
+        return null;
       }
 
       clearTimeout(timeout);
