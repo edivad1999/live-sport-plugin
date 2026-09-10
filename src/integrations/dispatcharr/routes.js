@@ -1,5 +1,5 @@
 const { canonicalEventId } = require('../../services/EventIdentityService');
-const { serializeEvent, filterEvents } = require('./EventSerializer');
+const { serializeEvent, filterEvents, dedupeEvents } = require('./EventSerializer');
 const { wrapPlayableUrl, pickPlayableStream } = require('./PlaybackService');
 
 const PROVIDER_KEYS = [
@@ -21,6 +21,24 @@ function requireBearer(req, res, next) {
   const hdr = req.headers.authorization || '';
   if (hdr === `Bearer ${token}`) return next();
   return res.status(401).json({ error: 'unauthorized' });
+}
+
+function matchesForEvent(cacheService, eventId) {
+  return cacheService.getMatches().filter((m) => canonicalEventId(m) === eventId);
+}
+
+async function resolveFromMatches(matches, resolveFn) {
+  const streams = [];
+  let sawError = false;
+  for (const match of matches) {
+    try {
+      const got = await resolveFn(match);
+      if (Array.isArray(got) && got.length) streams.push(...got);
+    } catch (_) {
+      sawError = true;
+    }
+  }
+  return { streams, sawError };
 }
 
 function providerHealth(container) {
@@ -60,7 +78,7 @@ function mountDispatcharrApi(app, deps) {
   app.get('/api/dispatcharr/v1/events', (req, res) => {
     const cacheService = container.resolve('cacheService');
     const matches = cacheService.getMatches();
-    const serialized = matches.map((m) => serializeEvent(m, canonicalEventId(m)));
+    const serialized = dedupeEvents(matches.map((m) => serializeEvent(m, canonicalEventId(m))));
     try {
       const events = filterEvents(serialized, {
         sports: req.query.sports,
@@ -80,21 +98,17 @@ function mountDispatcharrApi(app, deps) {
     const eventId = req.params.eventId;
     const sourceId = req.params.sourceId;
     const cacheService = container.resolve('cacheService');
-    const match = cacheService.getMatches().find((m) => canonicalEventId(m) === eventId);
-    if (!match) return res.status(404).json({ error: 'event_not_found' });
+    const matches = matchesForEvent(cacheService, eventId);
+    if (!matches.length) return res.status(404).json({ error: 'event_not_found' });
     if (typeof resolveMatchSource !== 'function') {
       return res.status(503).json({ error: 'resolve_failed' });
     }
 
-    let streams;
-    try {
-      streams = await resolveMatchSource(match.id, sourceId, null);
-    } catch (err) {
-      return res.status(503).json({ error: 'resolve_failed' });
-    }
-
+    const { streams, sawError } = await resolveFromMatches(matches, (match) => resolveMatchSource(match.id, sourceId, null));
     const chosen = pickPlayableStream(streams);
-    if (!chosen) return res.status(503).json({ error: 'no_playable_stream' });
+    if (!chosen) {
+      return res.status(503).json({ error: sawError && streams.length === 0 ? 'resolve_failed' : 'no_playable_stream' });
+    }
 
     const playUrl = wrapPlayableUrl(chosen, getRequestBaseUrl(req));
     if (!playUrl) return res.status(503).json({ error: 'no_playable_stream' });
@@ -104,18 +118,14 @@ function mountDispatcharrApi(app, deps) {
   app.get('/api/dispatcharr/v1/events/:eventId/play.m3u8', async (req, res) => {
     const eventId = req.params.eventId;
     const cacheService = container.resolve('cacheService');
-    const match = cacheService.getMatches().find((m) => canonicalEventId(m) === eventId);
-    if (!match) return res.status(404).json({ error: 'event_not_found' });
+    const matches = matchesForEvent(cacheService, eventId);
+    if (!matches.length) return res.status(404).json({ error: 'event_not_found' });
 
-    let streams;
-    try {
-      streams = await resolveMatchStreams(match.id, null);
-    } catch (err) {
-      return res.status(503).json({ error: 'resolve_failed' });
-    }
-
+    const { streams, sawError } = await resolveFromMatches(matches, (match) => resolveMatchStreams(match.id, null));
     const chosen = pickPlayableStream(streams);
-    if (!chosen) return res.status(503).json({ error: 'no_playable_stream' });
+    if (!chosen) {
+      return res.status(503).json({ error: sawError && streams.length === 0 ? 'resolve_failed' : 'no_playable_stream' });
+    }
 
     const playUrl = wrapPlayableUrl(chosen, getRequestBaseUrl(req));
     if (!playUrl) return res.status(503).json({ error: 'no_playable_stream' });

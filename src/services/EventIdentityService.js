@@ -10,6 +10,13 @@ const crypto = require('crypto');
  * before the bare-"inter" rule, otherwise "Inter Miami" would compound to
  * "intermilan" and collide with Inter Milan.
  */
+function _foldDiacritics(t) {
+  return String(t)
+    .replace(/ı/g, 'i')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function _compoundify(t) {
   const aliases = [
     [/\bman(chester)?\s*utd\b|\bmanchester\s*united\b/g, 'manchesterunited'],
@@ -21,6 +28,8 @@ function _compoundify(t) {
     [/\bbayern(\s*m[uü]nchen)?\b|\bbayern\s*munich\b/g, 'bayernmunich'],
     [/\batl(etico)?\s*madrid\b/g, 'atleticomadrid'],
     [/\breal\s*madrid\b|\br\s*madrid\b/g, 'realmadrid'],
+    [/\bas\s+roma\b/g, 'roma'],
+    [/\bas\s+monaco\b/g, 'monaco'],
     [/\binter\s*miami\b/g, 'intermiami'],
     [/\binter\s*turku\b/g, 'interturku'],
     [/\binter(\s*milan)?\b|\binternazionale\b/g, 'intermilan'],
@@ -56,7 +65,7 @@ function _compoundify(t) {
     [/\bdenver\s*nuggets\b|\bnuggets\b/g, 'denvernuggets'],
     [/\bmilwaukee\s*bucks\b|\bbucks\b/g, 'milwaukeebucks'],
   ];
-  let r = t.toLowerCase();
+  let r = _foldDiacritics(String(t).toLowerCase());
   for (const [regex, rep] of aliases) r = r.replace(regex, rep);
   return r;
 }

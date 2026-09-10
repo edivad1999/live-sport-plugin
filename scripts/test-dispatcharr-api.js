@@ -123,6 +123,38 @@ async function run() {
 
   server.close();
 
+  const webOnlyMatch = { ...match, id: 'spk_dup' };
+  const directMatch = { ...match, id: 'wf_dup' };
+  const dupCache = {
+    lastFetchTime: Date.UTC(2026, 8, 10, 9, 10, 0),
+    getMatches() { return [webOnlyMatch, directMatch]; }
+  };
+  const dupResolves = [];
+  const dupApp = express();
+  mountDispatcharrApi(dupApp, {
+    container: {
+      resolve(name) {
+        if (name === 'cacheService') return dupCache;
+        if (name === 'streamFreeProvider') return {};
+        throw new Error('missing ' + name);
+      }
+    },
+    engineVersion: '3.0.0',
+    getRequestBaseUrl: () => 'http://127.0.0.1:9',
+    resolveMatchStreams: async (id) => {
+      dupResolves.push(id);
+      if (id === 'wf_dup') return [{ url: 'https://cdn.example/token/abc/master.m3u8', name: 'Nuvio Direct' }];
+      return [{ externalUrl: '/watch?x', name: 'Nuvio Web Player' }];
+    }
+  });
+  const dup = await listen(dupApp);
+  const listed = await jsonGet(dup.port, '/api/dispatcharr/v1/events');
+  assert('duplicate canonical ids collapse to one event', listed.body.events.length === 1 && listed.body.events[0].id === eventId);
+  const dupPlay = await jsonGet(dup.port, `/api/dispatcharr/v1/events/${eventId}/play.m3u8`);
+  assert('play unions sources across duplicate matches', dupPlay.status === 302 && String(dupPlay.headers.location).includes('/api/manifest?url='));
+  assert('play tried both match ids', dupResolves.includes('spk_dup') && dupResolves.includes('wf_dup'));
+  dup.server.close();
+
   const webApp = express();
   mountDispatcharrApi(webApp, {
     container,

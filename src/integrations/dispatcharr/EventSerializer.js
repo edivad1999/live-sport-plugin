@@ -68,6 +68,25 @@ function serializeEvent(match, canonicalId) {
   };
 }
 
+function preferEvent(a, b) {
+  const ac = a && a.sourceCount ? a.sourceCount : 0;
+  const bc = b && b.sourceCount ? b.sourceCount : 0;
+  if (ac !== bc) return ac > bc ? a : b;
+  if (a && a.status === 'live' && (!b || b.status !== 'live')) return a;
+  if (b && b.status === 'live' && (!a || a.status !== 'live')) return b;
+  return a;
+}
+
+function dedupeEvents(events) {
+  const byId = new Map();
+  for (const event of events || []) {
+    if (!event || !event.id) continue;
+    const prev = byId.get(event.id);
+    byId.set(event.id, prev ? preferEvent(event, prev) : event);
+  }
+  return [...byId.values()];
+}
+
 function filterEvents(events, { sports, from, to } = {}) {
   let out = events;
   if (sports) {
@@ -96,6 +115,7 @@ function filterEvents(events, { sports, from, to } = {}) {
 module.exports = {
   serializeEvent,
   filterEvents,
+  dedupeEvents,
   estimatedEndMs,
   toIsoUtc
 };

@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { canonicalEventId } = require('../src/services/EventIdentityService');
+const { canonicalEventId, isSameEvent } = require('../src/services/EventIdentityService');
 const MatchEntity = require('../src/domain/MatchEntity');
 
 const ID_RE = /^ls_[0-9a-f]{16}$/;
@@ -71,6 +71,13 @@ function run() {
     const home = { title: 'Juventus vs Inter', category: 'football', date: day };
     const away = { title: 'Inter vs Juventus', category: 'football', date: day };
     assert.strictEqual(canonicalEventId(home), canonicalEventId(away));
+  });
+
+  test('Fenerbahçe vs Roma and Fenerbahce vs. AS Roma share an id on the same UTC day', () => {
+    const live = { title: 'Fenerbahçe vs Roma', category: 'football', date: day };
+    const listing = { title: 'Fenerbahce vs. AS Roma', category: 'football', date: day + (5 * 3600 * 1000) };
+    assert.strictEqual(canonicalEventId(live), canonicalEventId(listing));
+    assert.strictEqual(isSameEvent(live, listing), true);
   });
 
   test('id is opaque ls_ + 16 hex with no team names', () => {
