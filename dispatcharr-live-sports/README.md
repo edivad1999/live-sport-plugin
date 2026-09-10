@@ -11,7 +11,17 @@ The plugin never asks for a Dispatcharr URL, username, or password. It runs insi
 
 ## Install
 
-1. Download `dispatcharr-live-sports.zip` from a GitHub release of [edivad1999/live-sport-plugin](https://github.com/edivad1999/live-sport-plugin).
+Add this repository in Dispatcharr → Plugins → Manage Repos:
+
+```text
+https://raw.githubusercontent.com/edivad1999/live-sport-plugin/main/manifest.json
+```
+
+Then install Live Sports from the hub. The engine still has to be running where Dispatcharr can reach it. Engine URL defaults to `http://127.0.0.1:7000`.
+
+To import a ZIP instead:
+
+1. Download `dispatcharr-live-sports.zip` from a GitHub release of [edivad1999/live-sport-plugin](https://github.com/edivad1999/live-sport-plugin), or build it with `./scripts/package-dispatcharr-plugin.sh`.
 2. In Dispatcharr, open Plugins and import the ZIP.
 3. Enable the plugin.
 4. Set Engine URL if the engine is not on `http://127.0.0.1:7000`.

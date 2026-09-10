@@ -119,6 +119,16 @@ Use this repository, not the upstream clone URLs above. The plugin lives in `dis
 
 ### Install the plugin
 
+Add this repository in Dispatcharr → Plugins → Manage Repos, then install Live Sports from the hub:
+
+```text
+https://raw.githubusercontent.com/edivad1999/live-sport-plugin/main/manifest.json
+```
+
+The engine still has to be running where Dispatcharr can reach it. Engine URL defaults to `http://127.0.0.1:7000`.
+
+Or import a ZIP:
+
 1. Run this fork's engine (`docker compose up -d` or `npm start`) where Dispatcharr can reach port 7000.
 2. Build the plugin ZIP:
 

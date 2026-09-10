@@ -1,0 +1,39 @@
+name: Publish Dispatcharr plugin ZIP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "dispatcharr-live-sports/**"
+      - "scripts/package-dispatcharr-plugin.sh"
+      - "manifest.json"
+      - ".github/workflows/publish-dispatcharr-plugin.yml"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build plugin ZIP
+        run: ./scripts/package-dispatcharr-plugin.sh
+
+      - name: Publish rolling GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(python3 -c 'import json; print(json.load(open("dispatcharr-live-sports/plugin.json"))["version"])')"
+          ZIP="dist-plugin/dispatcharr-live-sports.zip"
+          TAG="dispatcharr-live-sports-latest"
+          NOTES="Dispatcharr plugin ZIP ${VERSION}. Add the repo in Plugins → Manage Repos with https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/manifest.json"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" "$ZIP" --title "Live Sports plugin" --notes "$NOTES"
+          fi
