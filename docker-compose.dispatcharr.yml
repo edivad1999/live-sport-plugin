@@ -1,0 +1,20 @@
+services:
+  live-sports-engine:
+    build: .
+    container_name: live-sports-engine
+    environment:
+      - PORT=7000
+    expose:
+      - "7000"
+    restart: unless-stopped
+    network_mode: service:gluetun
+
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: sports-gluetun
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER:-}
+      - VPN_TYPE=${VPN_TYPE:-wireguard}
+    restart: unless-stopped

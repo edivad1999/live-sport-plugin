@@ -248,19 +248,13 @@ async function prewarmMatch(match, config, topN = 3) {
 }
 
 
-async function handleStream(type, id, config) {
-  if (type !== 'tv' || !id.startsWith('nuvio_sport_')) {
-    return { streams: [] };
-  }
-
-  const matchId = id.replace('nuvio_sport_', '');
-  
+async function resolveMatchStreams(matchId, config) {
   const cacheService = container.resolve('cacheService');
   const matches = cacheService.getMatches();
   const match = matches.find(m => m.id === matchId);
 
   if (!match || !match.sources || match.sources.length === 0) {
-    return { streams: [] };
+    return [];
   }
 
   const streams = [];
@@ -311,6 +305,30 @@ async function handleStream(type, id, config) {
       console.warn('[streams.js] Error injecting 24/7 cricket channels:', e.message);
     }
   }
+
+  streams.sort((a, b) => {
+    const aIsDirect = !(!!a.externalUrl || a.name === 'Nuvio Web Player') ? 1 : 0;
+    const bIsDirect = !(!!b.externalUrl || b.name === 'Nuvio Web Player') ? 1 : 0;
+    if (aIsDirect !== bIsDirect) return bIsDirect - aIsDirect;
+    return b.score - a.score;
+  });
+
+  return streams;
+}
+
+async function handleStream(type, id, config) {
+  if (type !== 'tv' || !id.startsWith('nuvio_sport_')) {
+    return { streams: [] };
+  }
+
+  const matchId = id.replace('nuvio_sport_', '');
+  const cacheService = container.resolve('cacheService');
+  const match = cacheService.getMatches().find(m => m.id === matchId);
+  if (!match || !match.sources || match.sources.length === 0) {
+    return { streams: [] };
+  }
+
+  const streams = await resolveMatchStreams(matchId, config);
 
   // Standardize Stream Labels
   const sportIcons = {
@@ -433,5 +451,6 @@ async function handleStream(type, id, config) {
 
 module.exports = {
   handleStream,
-  prewarmMatch
+  prewarmMatch,
+  resolveMatchStreams
 };

@@ -21,9 +21,11 @@ const path = require('path');
 
 const { builder } = require('./manifest');
 const { handleCatalog, handleMeta } = require('./catalog');
-const { handleStream } = require('./streams');
+const { handleStream, resolveMatchStreams } = require('./streams');
 const { PORT, BASE_URL, getRequestBaseUrl } = require('./config');
 const container = require('./container');
+const { mountDispatcharrApi } = require('./integrations/dispatcharr/routes');
+const engineVersion = require('../package.json').version;
 
 
 
@@ -370,6 +372,13 @@ app.get('/api/proxy-embed', async (req, res) => {
   }
 });
 
+
+mountDispatcharrApi(app, {
+  container,
+  resolveMatchStreams,
+  getRequestBaseUrl,
+  engineVersion
+});
 
 // Mount the HLS Video Proxy (routes to the internal resolver on port RESOLVER_PORT)
 app.use('/api', createProxyMiddleware({

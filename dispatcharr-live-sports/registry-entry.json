@@ -1,0 +1,11 @@
+{
+  "name": "Live Sports",
+  "version": "0.1.0",
+  "description": "Discovers live sports from a companion engine and manages them as native Dispatcharr channels and EPG events.",
+  "author": "edivad1999",
+  "license": "MIT",
+  "source_type": "external",
+  "source_url": "https://github.com/edivad1999/live-sport-plugin/releases/download/v{version}/dispatcharr-live-sports.zip",
+  "repo_url": "https://github.com/edivad1999/live-sport-plugin",
+  "min_dispatcharr_version": "v0.20.0"
+}

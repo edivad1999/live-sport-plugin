@@ -1,0 +1,151 @@
+{
+  "name": "Live Sports",
+  "version": "0.1.0",
+  "description": "Creates native Dispatcharr channels and EPG rows from the Live Sports engine. Playback URLs stay on the engine and resolve just in time.",
+  "author": "edivad1999",
+  "license": "MIT",
+  "help_url": "https://github.com/edivad1999/live-sport-plugin",
+  "repo_url": "https://github.com/edivad1999/live-sport-plugin",
+  "fields": [
+    {
+      "id": "_section_engine",
+      "label": "Engine",
+      "type": "info",
+      "description": "The sports engine owns discovery and stream resolution. This plugin never asks for Dispatcharr credentials."
+    },
+    {
+      "id": "engine_url",
+      "label": "Engine URL",
+      "type": "string",
+      "default": "http://127.0.0.1:7000",
+      "placeholder": "http://127.0.0.1:7000"
+    },
+    {
+      "id": "api_token",
+      "label": "Engine API token",
+      "type": "string",
+      "default": "",
+      "input_type": "password"
+    },
+    {
+      "id": "sports",
+      "label": "Enabled sports",
+      "type": "string",
+      "default": "all",
+      "placeholder": "all  or  football,basketball"
+    },
+    {
+      "id": "_section_windows",
+      "label": "Lifecycle",
+      "type": "info",
+      "description": "When channels appear, hide after the estimated end, and delete."
+    },
+    {
+      "id": "create_hours",
+      "label": "Create before start (hours)",
+      "type": "number",
+      "default": 12
+    },
+    {
+      "id": "hide_hours",
+      "label": "Hide after end (hours)",
+      "type": "number",
+      "default": 2
+    },
+    {
+      "id": "delete_hours",
+      "label": "Delete after end (hours)",
+      "type": "number",
+      "default": 24
+    },
+    {
+      "id": "missing_grace_minutes",
+      "label": "Missing-event grace (minutes)",
+      "type": "number",
+      "default": 30
+    },
+    {
+      "id": "sync_interval",
+      "label": "Sync interval (minutes)",
+      "type": "number",
+      "default": 5
+    },
+    {
+      "id": "channel_start",
+      "label": "Channel number start",
+      "type": "number",
+      "default": 5000
+    },
+    {
+      "id": "group_prefix",
+      "label": "Group prefix",
+      "type": "string",
+      "default": "Live Sports"
+    },
+    {
+      "id": "profiles",
+      "label": "Channel profiles (comma-separated, blank = all)",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "id": "enabled",
+      "label": "Scheduler enabled",
+      "type": "boolean",
+      "default": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "test_engine",
+      "label": "Test Engine",
+      "description": "Calls the engine status endpoint. Writes nothing.",
+      "button_label": "Test Engine",
+      "button_variant": "outline",
+      "button_color": "blue"
+    },
+    {
+      "id": "preview_sync",
+      "label": "Preview Sync",
+      "description": "Shows what Sync Now would change. Writes nothing.",
+      "button_label": "Preview",
+      "button_variant": "outline",
+      "button_color": "blue"
+    },
+    {
+      "id": "sync_now",
+      "label": "Sync Now",
+      "description": "Creates, updates, hides, and deletes owned live-sports channels.",
+      "button_label": "Sync Now",
+      "button_variant": "filled",
+      "button_color": "red",
+      "confirm": {
+        "message": "This creates and updates native channels and EPG rows. Continue?"
+      }
+    },
+    {
+      "id": "cleanup",
+      "label": "Cleanup",
+      "description": "Hides or deletes owned channels that are past their windows. Does not create channels.",
+      "button_label": "Cleanup",
+      "button_variant": "outline",
+      "button_color": "orange"
+    },
+    {
+      "id": "update_scheduler",
+      "label": "Update Scheduler",
+      "description": "Re-arms the background sync thread from the saved interval.",
+      "button_label": "Save Schedule",
+      "button_variant": "filled",
+      "button_color": "green"
+    },
+    {
+      "id": "scheduler_status",
+      "label": "Scheduler Status",
+      "description": "Shows whether the background thread is running.",
+      "button_label": "Status",
+      "button_variant": "outline",
+      "button_color": "blue"
+    }
+  ]
+}

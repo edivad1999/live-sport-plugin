@@ -3,3 +3,8 @@ node_modules/
 *.log
 .DS_Store
 scratch/
+dist-plugin/
+.audit/
+.idea/
+__pycache__/
+*.pyc

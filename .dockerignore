@@ -7,3 +7,5 @@ npm-debug.log
 dist/impit-node.win32-x64-msvc.node
 nuvio-proxy-2
 dist_wasm
+dist-plugin
+.audit

@@ -1,0 +1,29 @@
+services:
+  dispatcharr:
+    image: ghcr.io/dispatcharr/dispatcharr:latest
+    container_name: dod-dispatcharr
+    ports:
+      - "9191:9191"
+    volumes:
+      - dod_data:/data
+      - ./dist-plugin/unpacked/dispatcharr-live-sports:/data/plugins/dispatcharr-live-sports
+    environment:
+      - DISPATCHARR_ENV=aio
+      - REDIS_HOST=localhost
+      - CELERY_BROKER_URL=redis://localhost:6379/0
+      - DISPATCHARR_LOG_LEVEL=info
+
+  live-sports-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dod-engine
+    network_mode: "service:dispatcharr"
+    depends_on:
+      - dispatcharr
+    environment:
+      - PORT=7000
+      - NODE_ENV=production
+
+volumes:
+  dod_data:
