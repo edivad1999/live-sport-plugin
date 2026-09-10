@@ -9,6 +9,7 @@ on:
 
 jobs:
   deploy:
+    if: github.repository == 'rajhodedara/live-sport-plugin'
     runs-on: ubuntu-latest
     strategy:
       matrix:
