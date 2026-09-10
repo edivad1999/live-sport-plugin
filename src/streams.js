@@ -449,8 +449,25 @@ async function handleStream(type, id, config) {
   };
 }
 
+async function resolveMatchSource(matchId, sourceId, config) {
+  const cacheService = container.resolve('cacheService');
+  const matches = cacheService.getMatches();
+  const match = matches.find((m) => m.id === matchId);
+  if (!match) return [];
+
+  const { findCatalogSource } = require('./integrations/dispatcharr/SourceIdentity');
+  const src = findCatalogSource(match, sourceId);
+  if (!src) return [];
+
+  const resolveCache = container.resolve('streamResolveCache');
+  const key = `${src.source}:${matchId}:${src.id}`;
+  const minted = await resolveCache.getOrCreate(key, () => mintVerifiedSources(src, match, config, key));
+  return Array.isArray(minted) ? minted.map((s) => ({ ...s, _cacheKey: key })) : [];
+}
+
 module.exports = {
   handleStream,
   prewarmMatch,
-  resolveMatchStreams
+  resolveMatchStreams,
+  resolveMatchSource
 };

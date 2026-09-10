@@ -21,10 +21,11 @@ const path = require('path');
 
 const { builder } = require('./manifest');
 const { handleCatalog, handleMeta } = require('./catalog');
-const { handleStream, resolveMatchStreams } = require('./streams');
+const { handleStream, resolveMatchStreams, resolveMatchSource } = require('./streams');
 const { PORT, BASE_URL, getRequestBaseUrl } = require('./config');
 const container = require('./container');
 const { mountDispatcharrApi } = require('./integrations/dispatcharr/routes');
+const { rewriteManifestLines } = require('./integrations/dispatcharr/PlaybackService');
 const engineVersion = require('../package.json').version;
 
 
@@ -243,38 +244,7 @@ app.get('/api/manifest', async (req, res) => {
           throw new Error('Upstream returned non-m3u8 body');
         }
 
-        // Rewrite the manifest
-        const lines = out.split('\n');
-        const rewritten = lines.map(line => {
-          const l = line.trim();
-          if (!l || l.startsWith('#')) return line;
-
-          let absoluteUrl = l;
-          try {
-            const chunkUrl = new URL(l, targetUrl);
-            const manifestUrl = new URL(targetUrl);
-
-            manifestUrl.searchParams.forEach((val, key) => {
-              if (!chunkUrl.searchParams.has(key)) {
-                chunkUrl.searchParams.set(key, val);
-              }
-            });
-            absoluteUrl = chunkUrl.toString();
-          } catch (err) {
-            absoluteUrl = l;
-          }
-
-          if (absoluteUrl.includes('.m3u8')) {
-            return `/api/manifest?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
-          }
-
-          if ((absoluteUrl.includes('.image') || absoluteUrl.includes('.js')) && !absoluteUrl.includes('.ts') && !absoluteUrl.includes('.m3u8')) {
-            absoluteUrl += '#.ts';
-          }
-          return absoluteUrl;
-        });
-
-        const rewrittenResult = rewritten.join('\n');
+        const rewrittenResult = rewriteManifestLines(out, targetUrl, referer, origin);
         manifestCacheSet(cacheKey, rewrittenResult);
         return rewrittenResult;
       })().finally(() => {
@@ -376,6 +346,7 @@ app.get('/api/proxy-embed', async (req, res) => {
 mountDispatcharrApi(app, {
   container,
   resolveMatchStreams,
+  resolveMatchSource,
   getRequestBaseUrl,
   engineVersion
 });

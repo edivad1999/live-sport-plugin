@@ -45,6 +45,33 @@ function wrapPlayableUrl(stream, baseUrl) {
   return `${root}/api/manifest?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
 }
 
+function rewriteManifestLines(body, targetUrl, referer, origin) {
+  return String(body || '').split('\n').map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return line;
+
+    let absoluteUrl = trimmed;
+    try {
+      const chunkUrl = new URL(trimmed, targetUrl);
+      const manifestUrl = new URL(targetUrl);
+      manifestUrl.searchParams.forEach((val, key) => {
+        if (!chunkUrl.searchParams.has(key)) {
+          chunkUrl.searchParams.set(key, val);
+        }
+      });
+      absoluteUrl = chunkUrl.toString();
+    } catch (_) {}
+
+    if (absoluteUrl.includes('.m3u8')) {
+      return `/api/manifest?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
+    }
+    if ((absoluteUrl.includes('.image') || absoluteUrl.includes('.js')) && !absoluteUrl.includes('.ts') && !absoluteUrl.includes('.m3u8')) {
+      absoluteUrl += '#.ts';
+    }
+    return absoluteUrl;
+  }).join('\n');
+}
+
 function pickPlayableStream(streams) {
   const list = Array.isArray(streams) ? streams : [];
   for (const s of list) {
@@ -57,5 +84,6 @@ module.exports = {
   wrapPlayableUrl,
   pickPlayableStream,
   isWebOnly,
-  unwrapManifest
+  unwrapManifest,
+  rewriteManifestLines
 };

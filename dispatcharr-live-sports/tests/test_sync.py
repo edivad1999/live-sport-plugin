@@ -82,6 +82,7 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(owned["url"], playback_url(SETTINGS["engine_url"], row["id"]))
         self.assertEqual(owned["channel_number"], 5000)
         self.assertTrue(owned["url"].endswith("/api/dispatcharr/v1/events/%s/play.m3u8" % row["id"]))
+        self.assertEqual(owned["stream_profile"], "Redirect")
         self.assertNotIn("cdn.", owned["url"])
         self.assertTrue(owned["has_memberships"])
 
@@ -194,6 +195,20 @@ class SyncTests(unittest.TestCase):
         second = {row["event_id"]: row["channel_number"] for row in store.list_owned()}
         self.assertEqual(first, second)
         self.assertEqual(sorted(first.values()), [5000, 5001])
+
+    def test_playback_base_url_is_what_players_get(self):
+        store = MemoryStore()
+        settings = dict(SETTINGS)
+        settings["playback_base_url"] = "http://host.example:7000"
+        row = event()
+        now = utc(2026, 9, 10, 17, 0)
+        sync(store, FakeEngine([row]), settings, now=now)
+        owned = store.get_owned(row["id"])
+        self.assertEqual(
+            owned["url"],
+            "http://host.example:7000/api/dispatcharr/v1/events/%s/play.m3u8" % row["id"],
+        )
+        self.assertEqual(owned["stream_profile"], "Redirect")
 
     def test_skip_before_create_window(self):
         store = MemoryStore()

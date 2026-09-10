@@ -92,6 +92,7 @@ class DjangoStore:
             channel_number=number,
             hidden_from_output=False,
             auto_created=False,
+            stream_profile=self._stream_profile(payload),
         )
         stream = Stream.objects.create(
             name=payload["name"],
@@ -100,6 +101,7 @@ class DjangoStore:
             channel_group=group,
             logo_url=payload.get("artwork") or None,
             last_seen=now,
+            stream_profile=self._stream_profile(payload),
             custom_properties={
                 "managed_by": PLUGIN_KEY,
                 "event_id": payload["event_id"],
@@ -119,7 +121,8 @@ class DjangoStore:
         channel.tvg_id = payload["tvg_id"]
         channel.channel_group = group
         channel.hidden_from_output = False
-        channel.save(update_fields=["name", "tvg_id", "channel_group", "hidden_from_output"])
+        channel.stream_profile = self._stream_profile(payload)
+        channel.save(update_fields=["name", "tvg_id", "channel_group", "hidden_from_output", "stream_profile"])
         now = parse_utc(payload.get("last_seen")) or datetime.now(timezone.utc)
         props = dict(stream.custom_properties or {})
         props["managed_by"] = PLUGIN_KEY
@@ -131,6 +134,7 @@ class DjangoStore:
         stream.channel_group = group
         stream.logo_url = payload.get("artwork") or stream.logo_url
         stream.last_seen = now
+        stream.stream_profile = self._stream_profile(payload)
         stream.custom_properties = props
         stream.save()
         self._set_memberships(channel, payload.get("profiles") or [])
@@ -192,6 +196,7 @@ class DjangoStore:
             "tvg_id": channel.tvg_id,
             "name": channel.name,
             "url": stream.url,
+            "stream_profile": stream.stream_profile.name if stream.stream_profile_id else "",
             "group": channel.channel_group.name if channel.channel_group_id else "",
             "start_time": start,
             "end_time": end,
@@ -209,6 +214,12 @@ class DjangoStore:
         if not ChannelProfile.objects.exists():
             return True
         return ChannelProfileMembership.objects.filter(channel=channel).exists()
+
+    def _stream_profile(self, payload):
+        from core.models import StreamProfile
+
+        name = payload.get("stream_profile") or "Redirect"
+        return StreamProfile.objects.filter(name=name, locked=True).first()
 
     def _set_memberships(self, channel, profile_names):
         from apps.channels.models import ChannelProfile, ChannelProfileMembership

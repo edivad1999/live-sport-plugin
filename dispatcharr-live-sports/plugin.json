@@ -21,6 +21,13 @@
       "placeholder": "http://127.0.0.1:7000"
     },
     {
+      "id": "playback_base_url",
+      "label": "Playback URL",
+      "type": "string",
+      "default": "",
+      "placeholder": "http://host.example:7000"
+    },
+    {
       "id": "api_token",
       "label": "Engine API token",
       "type": "string",

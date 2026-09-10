@@ -37,6 +37,7 @@ function providerHealth(container) {
 function mountDispatcharrApi(app, deps) {
   const container = deps.container;
   const resolveMatchStreams = deps.resolveMatchStreams;
+  const resolveMatchSource = deps.resolveMatchSource;
   const getRequestBaseUrl = deps.getRequestBaseUrl;
   const engineVersion = deps.engineVersion || '0.0.0';
 
@@ -73,6 +74,31 @@ function mountDispatcharrApi(app, deps) {
       }
       throw err;
     }
+  });
+
+  app.get('/api/dispatcharr/v1/events/:eventId/sources/:sourceId/play.m3u8', async (req, res) => {
+    const eventId = req.params.eventId;
+    const sourceId = req.params.sourceId;
+    const cacheService = container.resolve('cacheService');
+    const match = cacheService.getMatches().find((m) => canonicalEventId(m) === eventId);
+    if (!match) return res.status(404).json({ error: 'event_not_found' });
+    if (typeof resolveMatchSource !== 'function') {
+      return res.status(503).json({ error: 'resolve_failed' });
+    }
+
+    let streams;
+    try {
+      streams = await resolveMatchSource(match.id, sourceId, null);
+    } catch (err) {
+      return res.status(503).json({ error: 'resolve_failed' });
+    }
+
+    const chosen = pickPlayableStream(streams);
+    if (!chosen) return res.status(503).json({ error: 'no_playable_stream' });
+
+    const playUrl = wrapPlayableUrl(chosen, getRequestBaseUrl(req));
+    if (!playUrl) return res.status(503).json({ error: 'no_playable_stream' });
+    res.redirect(302, playUrl);
   });
 
   app.get('/api/dispatcharr/v1/events/:eventId/play.m3u8', async (req, res) => {

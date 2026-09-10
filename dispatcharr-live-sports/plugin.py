@@ -87,6 +87,7 @@ class Plugin:
     fields = [
         {"id": "_section_engine", "label": "Engine", "type": "info", "description": "The sports engine owns discovery and stream resolution. This plugin never asks for Dispatcharr credentials."},
         {"id": "engine_url", "label": "Engine URL", "type": "string", "default": "http://127.0.0.1:7000", "placeholder": "http://127.0.0.1:7000"},
+        {"id": "playback_base_url", "label": "Playback URL", "type": "string", "default": "", "placeholder": "http://host.example:7000"},
         {"id": "api_token", "label": "Engine API token", "type": "string", "default": "", "input_type": "password"},
         {"id": "sports", "label": "Enabled sports", "type": "string", "default": "all", "placeholder": "all  or  football,basketball"},
         {"id": "_section_windows", "label": "Lifecycle", "type": "info", "description": "When channels appear, hide after the estimated end, and delete."},

@@ -1,3 +1,5 @@
+const { serializeCatalogSources } = require('./SourceIdentity');
+
 const DURATION_MS = {
   football: 2.5 * 3600 * 1000,
   basketball: 2.5 * 3600 * 1000,
@@ -59,6 +61,7 @@ function serializeEvent(match, canonicalId) {
       background: match.background || ''
     },
     sourceCount: Array.isArray(match.sources) ? match.sources.length : 0,
+    sources: serializeCatalogSources(match, canonicalId),
     playback: {
       url: `/api/dispatcharr/v1/events/${canonicalId}/play.m3u8`
     }

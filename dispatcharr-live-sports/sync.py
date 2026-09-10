@@ -54,8 +54,9 @@ def format_report(report, preview=False):
     return "\n".join(lines)
 
 
-def playback_url(engine_url, event_id):
-    return engine_url.rstrip("/") + "/api/dispatcharr/v1/events/%s/play.m3u8" % event_id
+def playback_url(engine_url, event_id, playback_base_url=None):
+    base = (playback_base_url or engine_url or "http://127.0.0.1:7000").rstrip("/")
+    return base + "/api/dispatcharr/v1/events/%s/play.m3u8" % event_id
 
 
 def group_name(settings, sport):
@@ -154,7 +155,8 @@ def _upsert_payload(event, settings, engine_url, now):
         "name": event.get("title") or event_id,
         "sport": event.get("sport") or "other",
         "group": group_name(settings, event.get("sport")),
-        "url": playback_url(engine_url, event_id),
+        "url": playback_url(engine_url, event_id, settings.get("playback_base_url")),
+        "stream_profile": "Redirect",
         "start_time": event.get("startTime"),
         "end_time": event.get("estimatedEndTime"),
         "league": event.get("league") or "",
@@ -177,6 +179,8 @@ def _same_payload(existing, payload):
     if existing.get("name") != payload.get("name"):
         return False
     if existing.get("url") != payload.get("url"):
+        return False
+    if existing.get("stream_profile") != payload.get("stream_profile"):
         return False
     if existing.get("group") != payload.get("group"):
         return False
