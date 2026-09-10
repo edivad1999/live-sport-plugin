@@ -109,6 +109,31 @@ pm2 startup
 
 ---
 
+## 📺 Dispatcharr
+
+This fork also feeds [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr) without an M3U or XMLTV import. The same engine that serves Nuvio and Stremio exposes a JSON + HLS API. A Python plugin then creates native channels and EPG rows inside Dispatcharr.
+
+Playback URLs stay on the engine (`/api/dispatcharr/v1/events/:id/play.m3u8`) and resolve just in time. Provider CDN URLs are never stored.
+
+Use this repository, not the upstream clone URLs above. The plugin lives in `dispatcharr-live-sports/`.
+
+### Install the plugin
+
+1. Run this fork's engine (`docker compose up -d` or `npm start`) where Dispatcharr can reach port 7000.
+2. Build the plugin ZIP:
+
+```bash
+./scripts/package-dispatcharr-plugin.sh
+```
+
+3. In Dispatcharr, open Plugins, import `dist-plugin/dispatcharr-live-sports.zip`, and enable it.
+4. Leave Engine URL at `http://127.0.0.1:7000` when the engine shares Dispatcharr's network namespace (`docker-compose.dod.yml`). Otherwise set the engine hostname, for example `http://live-sports-engine:7000` or `http://host.docker.internal:7000`.
+5. If you set `DISPATCHARR_API_TOKEN` on the engine, paste the same token in the plugin. Then click Test Engine, then Sync Now.
+
+Channels show up as `Live Sports / <Sport>` from channel number 5000. Lifecycle windows, ownership, and the three engine endpoints are documented in [`dispatcharr-live-sports/README.md`](dispatcharr-live-sports/README.md).
+
+---
+
 ## ✨ Key Features
 
 - **🏟️ Multi-Source Live Aggregator:** Concurrently scrapes and unifies live fixtures from 8+ scrapers (Streamed.pk, StreamFree, WatchFooty, SportyHunter, TimStreams, StreamSports99, Streamic, CDNLiveTV) into a deduplicated catalog with merged stream choices.
